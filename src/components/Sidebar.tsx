@@ -27,7 +27,7 @@ const navItems = [
   { icon: CheckSquare, label: '审批管理', path: '/approval' },
   { icon: Database, label: '数据库表管理', path: '/db' },
   { icon: Megaphone, label: '系统公告', path: '/announcement' },
-  { icon: Shield, label: '脱敏设置', path: '/desensitization' },
+  { icon: Shield, label: '规则中心', path: '/desensitization' },
 ];
 
 export function Sidebar() {

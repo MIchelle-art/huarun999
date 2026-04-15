@@ -10,9 +10,13 @@ import {
   Target, 
   Terminal,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  X,
+  Settings,
+  Pencil,
+  Check
 } from 'lucide-react';
-import { cn } from '../utils/cn';
+import { cn } from '../lib/utils';
 
 interface Rule {
   id: string;
@@ -53,6 +57,12 @@ const Switch = ({ checked, onChange }: { checked: boolean; onChange: () => void 
 export function DesensitizationContent() {
   const [rules, setRules] = useState<Rule[]>(defaultRules);
   const [prompt, setPrompt] = useState('请作为专业的数据安全专家，严格按照以下选中的脱敏规则对文档进行重写。保持原文的语义和结构不变，仅对敏感信息进行脱敏处理。');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newRuleTitle, setNewRuleTitle] = useState('');
+  const [newRuleDesc, setNewRuleDesc] = useState('');
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
 
   const toggleRule = (id: string) => {
     setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
@@ -60,6 +70,41 @@ export function DesensitizationContent() {
 
   const deleteRule = (id: string) => {
     setRules(rules.filter(r => r.id !== id));
+  };
+
+  const handleAddRule = () => {
+    if (!newRuleTitle.trim() || !newRuleDesc.trim()) return;
+
+    const newRule: Rule = {
+      id: Date.now().toString(),
+      type: newRuleTitle.trim(),
+      description: newRuleDesc.trim(),
+      enabled: true,
+      icon: Settings,
+      color: 'text-orange-500',
+      bg: 'bg-orange-50'
+    };
+
+    setRules([...rules, newRule]);
+    setIsAddModalOpen(false);
+    setNewRuleTitle('');
+    setNewRuleDesc('');
+  };
+
+  const handleEditRule = (rule: Rule) => {
+    setEditingRuleId(rule.id);
+    setEditTitle(rule.type);
+    setEditDesc(rule.description);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTitle.trim() || !editDesc.trim()) return;
+    setRules(rules.map(r => r.id === editingRuleId ? { ...r, type: editTitle.trim(), description: editDesc.trim() } : r));
+    setEditingRuleId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRuleId(null);
   };
 
   return (
@@ -127,7 +172,10 @@ export function DesensitizationContent() {
             <h2 className="text-lg font-bold text-gray-800 mb-1">脱敏规则配置</h2>
             <p className="text-sm text-gray-500">勾选需要在重写时应用的信息抹除或泛化规则</p>
           </div>
-          <button className="flex items-center gap-2 text-[#FF6B35] bg-orange-50 px-4 py-2 rounded-xl text-sm hover:bg-orange-100 transition-colors font-semibold">
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 text-[#FF6B35] bg-orange-50 px-4 py-2 rounded-xl text-sm hover:bg-orange-100 transition-colors font-semibold"
+          >
             <Plus size={16} strokeWidth={2.5} /> 新增自定义规则
           </button>
         </div>
@@ -135,55 +183,168 @@ export function DesensitizationContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-12">
           {rules.map((rule) => {
             const Icon = rule.icon;
+            const isEditing = editingRuleId === rule.id;
+
             return (
               <div 
                 key={rule.id} 
                 className={cn(
                   "bg-white rounded-2xl p-5 border transition-all duration-200 relative group",
-                  rule.enabled 
+                  rule.enabled && !isEditing
                     ? "border-gray-200 shadow-sm hover:shadow-md hover:border-orange-200" 
-                    : "border-gray-100 bg-gray-50/50"
+                    : isEditing 
+                      ? "border-orange-400 shadow-md ring-4 ring-orange-50"
+                      : "border-gray-100 bg-gray-50/50"
                 )}
               >
-                <div className="flex items-start gap-4">
-                  <div className={cn(
-                    "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                    rule.enabled ? rule.bg : "bg-gray-100"
-                  )}>
-                    <Icon size={20} className={rule.enabled ? rule.color : "text-gray-400"} />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <h4 className={cn(
-                        "text-base font-bold truncate pr-4 transition-colors", 
-                        rule.enabled ? "text-gray-800" : "text-gray-400"
+                {isEditing ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                        rule.bg
                       )}>
-                        {rule.type}
-                      </h4>
-                      <Switch checked={rule.enabled} onChange={() => toggleRule(rule.id)} />
+                        <Icon size={20} className={rule.color} />
+                      </div>
+                      <input 
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-sm font-bold text-gray-800 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        placeholder="规则名称"
+                        autoFocus
+                      />
                     </div>
-                    <p className={cn(
-                      "text-[13px] leading-relaxed transition-colors line-clamp-2 pr-6",
-                      rule.enabled ? "text-gray-500" : "text-gray-400"
-                    )}>
-                      {rule.description}
-                    </p>
+                    <textarea 
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      className="w-full h-20 px-3 py-2 text-[13px] text-gray-600 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 resize-none leading-relaxed"
+                      placeholder="规则描述"
+                    />
+                    <div className="flex justify-end gap-2 mt-1">
+                      <button 
+                        onClick={handleCancelEdit}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <X size={14} /> 取消
+                      </button>
+                      <button 
+                        onClick={handleSaveEdit}
+                        disabled={!editTitle.trim() || !editDesc.trim()}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-[#FF6B35] hover:bg-[#e55a2b] rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Check size={14} /> 保存
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-start gap-4">
+                      <div className={cn(
+                        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                        rule.enabled ? rule.bg : "bg-gray-100"
+                      )}>
+                        <Icon size={20} className={rule.enabled ? rule.color : "text-gray-400"} />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <h4 className={cn(
+                            "text-base font-bold truncate pr-4 transition-colors", 
+                            rule.enabled ? "text-gray-800" : "text-gray-400"
+                          )}>
+                            {rule.type}
+                          </h4>
+                          <Switch checked={rule.enabled} onChange={() => toggleRule(rule.id)} />
+                        </div>
+                        <p className={cn(
+                          "text-[13px] leading-relaxed transition-colors line-clamp-2 pr-6",
+                          rule.enabled ? "text-gray-500" : "text-gray-400"
+                        )}>
+                          {rule.description}
+                        </p>
+                      </div>
+                    </div>
 
-                <button 
-                  onClick={() => deleteRule(rule.id)}
-                  className="absolute top-4 right-16 p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
-                  title="删除规则"
-                >
-                  <Trash2 size={16} />
-                </button>
+                    <div className="absolute top-4 right-16 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => handleEditRule(rule)}
+                        className="p-1.5 text-gray-300 hover:text-[#FF6B35] rounded-lg hover:bg-orange-50 transition-colors"
+                        title="编辑规则"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button 
+                        onClick={() => deleteRule(rule.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                        title="删除规则"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Add Custom Rule Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-[480px] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                <Settings className="text-[#FF6B35]" size={20} /> 
+                新增自定义规则
+              </h3>
+              <button 
+                onClick={() => setIsAddModalOpen(false)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">规则名称</label>
+                <input 
+                  type="text" 
+                  value={newRuleTitle}
+                  onChange={(e) => setNewRuleTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  placeholder="例如：员工身份证号"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">处理方式说明</label>
+                <textarea 
+                  value={newRuleDesc}
+                  onChange={(e) => setNewRuleDesc(e.target.value)}
+                  className="w-full h-24 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
+                  placeholder="描述需要如何处理这类信息，例如：将所有员工身份证号替换为[身份ID]"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddRule}
+                disabled={!newRuleTitle.trim() || !newRuleDesc.trim()}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-[#FF6B35] text-white hover:bg-[#e55a2b] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                确认添加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

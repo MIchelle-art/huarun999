@@ -86,8 +86,16 @@ export function MainContent() {
   const [selectedFolder, setSelectedFolder] = useState<{id: string, name: string, approver: string} | null>(null);
   const [tempApprover, setTempApprover] = useState<string>('');
   const [showApproverDropdown, setShowApproverDropdown] = useState(false);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [syncTarget, setSyncTarget] = useState<'pitchlab' | 'training'>('pitchlab');
 
-  const mockUsers = ['王总监', '李技术', '赵财务', '张经理', '刘审核'];
+  const mockUsers = [
+    { name: '王总监', dept: '市场部' },
+    { name: '李技术', dept: '技术研发中心' },
+    { name: '赵财务', dept: '财务部' },
+    { name: '张经理', dept: '销售部' },
+    { name: '刘审核', dept: '法务部' }
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -106,14 +114,28 @@ export function MainContent() {
     setDocuments(docs => docs.map(d => d.id === id ? { ...d, enabled: !d.enabled } : d));
   };
 
+  const handleSelectDoc = (id: string) => {
+    setSelectedDocIds(prev => 
+      prev.includes(id) ? prev.filter(docId => docId !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedDocIds.length === documents.length) {
+      setSelectedDocIds([]);
+    } else {
+      setSelectedDocIds(documents.map(d => d.id));
+    }
+  };
+
   const handleDropdownToggle = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDropdown(activeDropdown === id ? null : id);
   };
 
-  const openSyncModal = (doc: Document) => {
-    setSelectedDoc(doc);
-    // Find the folder approver based on doc folder (mocking this logic by assigning default '产品推广素材' folder approver)
+  const openSyncModal = (doc: Document | null, target: 'pitchlab' | 'training') => {
+    setSelectedDoc(doc); // if null, it means batch mode
+    setSyncTarget(target);
     const folderApprover = folders[0].approver;
     setTempApprover(folderApprover);
     setSyncModalOpen(true);
@@ -121,9 +143,14 @@ export function MainContent() {
   };
 
   const submitApproval = () => {
-    // Mock the submission process
     setSyncModalOpen(false);
-    alert(`《${selectedDoc?.name}》脱敏及审批流程已触发！已提交给 ${tempApprover} 审批。`);
+    const targetName = syncTarget === 'pitchlab' ? 'pitchlab' : '培训助手';
+    if (selectedDoc) {
+      alert(`《${selectedDoc.name}》脱敏及同步至${targetName}流程已触发！已提交给 ${tempApprover} 审批。`);
+    } else {
+      alert(`已选择 ${selectedDocIds.length} 个文档，脱敏及同步至${targetName}流程已触发！已提交给 ${tempApprover} 审批。`);
+      setSelectedDocIds([]);
+    }
     navigate('/approval');
   };
 
@@ -209,10 +236,28 @@ export function MainContent() {
       </div>
 
       {/* Document List */}
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex items-center gap-2 p-4 text-gray-500 text-sm border-b border-gray-100 bg-gray-50/50">
-          <FileText size={16} />
-          <span>文档列表 (18)</span>
+      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <FileText size={16} />
+            <span>文档列表 (18)</span>
+            {selectedDocIds.length > 0 && (
+              <span className="ml-2 px-2 py-0.5 bg-orange-100 text-[#FF6B35] rounded-full text-xs font-medium">
+                已选 {selectedDocIds.length} 项
+              </span>
+            )}
+          </div>
+          
+          {selectedDocIds.length > 0 && (
+            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-200">
+              <button 
+                onClick={() => openSyncModal(null, 'training')}
+                className="text-[15px] font-medium text-white bg-[#FF6B35] border border-transparent px-3 py-1.5 rounded-lg hover:bg-[#e55a2b] transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <ShieldCheck size={14} /> 脱敏同步至AI陪练助手
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-auto">
@@ -220,7 +265,12 @@ export function MainContent() {
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-400 font-medium">
                 <th className="py-4 pl-6 pr-4 w-12">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                  <input 
+                    type="checkbox" 
+                    checked={documents.length > 0 && selectedDocIds.length === documents.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer" 
+                  />
                 </th>
                 <th className="py-4 px-4 font-medium w-[280px]">文档名称</th>
                 <th className="py-4 px-4 font-medium w-24">大小</th>
@@ -234,9 +284,17 @@ export function MainContent() {
             </thead>
             <tbody className="text-sm">
               {documents.map((doc, index) => (
-                <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                <tr key={doc.id} className={cn(
+                  "border-b border-gray-50 transition-colors group",
+                  selectedDocIds.includes(doc.id) ? "bg-orange-50/30" : "hover:bg-gray-50/50"
+                )}>
                   <td className="py-4 pl-6 pr-4">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500" />
+                    <input 
+                      type="checkbox" 
+                      checked={selectedDocIds.includes(doc.id)}
+                      onChange={() => handleSelectDoc(doc.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer" 
+                    />
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
@@ -278,10 +336,10 @@ export function MainContent() {
                             <button className="w-full text-left px-4 py-2.5 text-[13px] font-normal hover:bg-orange-50 hover:text-[#FF6B35] transition-colors border-t border-gray-50"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openSyncModal(doc);
+                                openSyncModal(doc, 'training');
                               }}
                             >
-                              脱敏后同步至pitchlab
+                              脱敏后同步至培训助手
                             </button>
                           </div>
                         )}
@@ -325,19 +383,20 @@ export function MainContent() {
                     />
                     {showApproverDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
-                        {mockUsers.filter(u => u.includes(selectedFolder.approver)).map((user, index) => (
+                        {mockUsers.filter(u => u.name.includes(selectedFolder.approver)).map((user, index) => (
                           <div 
                             key={index}
-                            className="px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#FF6B35] cursor-pointer transition-colors"
+                            className="px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#FF6B35] cursor-pointer transition-colors flex items-center justify-between"
                             onClick={() => {
-                              setSelectedFolder({...selectedFolder, approver: user});
+                              setSelectedFolder({...selectedFolder, approver: user.name});
                               setShowApproverDropdown(false);
                             }}
                           >
-                            {user}
+                            <span>{user.name}</span>
+                            <span className="text-xs text-gray-400">{user.dept}</span>
                           </div>
                         ))}
-                        {mockUsers.filter(u => u.includes(selectedFolder.approver)).length === 0 && (
+                        {mockUsers.filter(u => u.name.includes(selectedFolder.approver)).length === 0 && (
                           <div className="px-4 py-2 text-sm text-gray-400 text-center">无匹配用户</div>
                         )}
                       </div>
@@ -364,12 +423,13 @@ export function MainContent() {
       )}
 
       {/* Sync Modal */}
-      {syncModalOpen && selectedDoc && (
+      {syncModalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-[480px] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                <ShieldCheck className="text-[#FF6B35]" size={20} /> 脱敏及审批流程
+                <ShieldCheck className="text-[#FF6B35]" size={20} /> 
+                脱敏及同步至{syncTarget === 'pitchlab' ? 'pitchlab' : '培训助手'}
               </h3>
               <button onClick={() => setSyncModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X size={20} />
@@ -377,7 +437,13 @@ export function MainContent() {
             </div>
             <div className="p-6 text-gray-600 text-sm leading-relaxed">
               <p className="mb-4">
-                即将对文档 <span className="font-bold text-gray-800">《{selectedDoc.name}》</span> 触发大模型脱敏重写。
+                即将对 
+                {selectedDoc ? (
+                  <span className="font-bold text-gray-800">《{selectedDoc.name}》</span>
+                ) : (
+                  <span className="font-bold text-[#FF6B35]">已选的 {selectedDocIds.length} 个文档</span>
+                )} 
+                触发大模型脱敏重写。
               </p>
               <div className="bg-orange-50/50 border border-orange-100 rounded-lg p-4 mb-4">
                 <p className="mb-2 text-gray-700">请确认或重新指定审批人：</p>
@@ -395,19 +461,20 @@ export function MainContent() {
                     />
                     {showApproverDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
-                        {mockUsers.filter(u => u.includes(tempApprover)).map((user, index) => (
+                        {mockUsers.filter(u => u.name.includes(tempApprover)).map((user, index) => (
                           <div 
                             key={index}
-                            className="px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#FF6B35] cursor-pointer transition-colors"
+                            className="px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#FF6B35] cursor-pointer transition-colors flex items-center justify-between"
                             onClick={() => {
-                              setTempApprover(user);
+                              setTempApprover(user.name);
                               setShowApproverDropdown(false);
                             }}
                           >
-                            {user}
+                            <span>{user.name}</span>
+                            <span className="text-xs text-gray-400">{user.dept}</span>
                           </div>
                         ))}
-                        {mockUsers.filter(u => u.includes(tempApprover)).length === 0 && (
+                        {mockUsers.filter(u => u.name.includes(tempApprover)).length === 0 && (
                           <div className="px-4 py-2 text-sm text-gray-400 text-center">无匹配用户</div>
                         )}
                       </div>
@@ -416,7 +483,7 @@ export function MainContent() {
                   <span className="text-gray-400 text-xs shrink-0 whitespace-nowrap">(默认取自该文档所属文件夹)</span>
                 </div>
               </div>
-              <p className="text-xs text-gray-400">注：审核通过后将自动执行至 pitchlab 系统的同步推送操作。</p>
+              <p className="text-xs text-gray-400">注：审核通过后将自动执行至 {syncTarget === 'pitchlab' ? 'pitchlab' : '培训助手'} 系统的同步推送操作。</p>
             </div>
             <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
               <button 

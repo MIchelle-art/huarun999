@@ -47,13 +47,20 @@ const StatusBadge = ({ status }: { status: string }) => {
 export function ApprovalContent() {
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [records, setRecords] = useState(mockApprovals);
+  const [selectedRecord, setSelectedRecord] = useState<ApprovalRecord | null>(null);
 
   const handleApprove = (id: string) => {
     setRecords(records.map(r => r.id === id ? { ...r, status: 'approved' } : r));
+    if (selectedRecord?.id === id) {
+      setSelectedRecord({ ...selectedRecord, status: 'approved' });
+    }
   };
 
   const handleReject = (id: string) => {
     setRecords(records.map(r => r.id === id ? { ...r, status: 'rejected' } : r));
+    if (selectedRecord?.id === id) {
+      setSelectedRecord({ ...selectedRecord, status: 'rejected' });
+    }
   };
 
   const filteredRecords = activeTab === 'pending' ? records.filter(r => r.status === 'pending') : records;
@@ -114,44 +121,48 @@ export function ApprovalContent() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-100 text-xs text-gray-400 font-medium bg-gray-50/50">
-                <th className="py-4 px-6 font-medium w-[240px]">申请文档 (脱敏后)</th>
-                <th className="py-4 px-4 font-medium w-[300px]">脱敏后文件内容概述</th>
-                <th className="py-4 px-4 font-medium">所属文件夹</th>
-                <th className="py-4 px-4 font-medium">申请人</th>
-                <th className="py-4 px-4 font-medium">审批人</th>
-                <th className="py-4 px-4 font-medium">申请时间</th>
-                <th className="py-4 px-4 font-medium">状态</th>
-                <th className="py-4 px-6 font-medium text-right">操作</th>
+                <th className="py-4 px-6 font-medium w-[240px] align-middle text-center">申请文档 (脱敏后)</th>
+                <th className="py-4 px-4 font-medium w-[300px] align-middle text-center">脱敏后文件内容概述</th>
+                <th className="py-4 px-4 font-medium align-middle text-center">所属文件夹</th>
+                <th className="py-4 px-4 font-medium align-middle text-center">申请人</th>
+                <th className="py-4 px-4 font-medium align-middle text-center">审批人</th>
+                <th className="py-4 px-4 font-medium align-middle text-center">申请时间</th>
+                <th className="py-4 px-4 font-medium align-middle text-center">状态</th>
+                <th className="py-4 px-6 font-medium align-middle text-center">操作</th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {filteredRecords.length > 0 ? filteredRecords.map((record) => (
-                <tr key={record.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group items-start">
-                  <td className="py-5 px-6 align-top pt-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded bg-orange-50 flex items-center justify-center text-[#FF6B35] shrink-0">
-                        <FileText size={16} />
+                {filteredRecords.length > 0 ? filteredRecords.map((record) => (
+                  <tr key={record.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                    <td className="py-4 px-6 align-middle">
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="w-8 h-8 rounded bg-orange-50 flex items-center justify-center text-[#FF6B35] shrink-0">
+                          <FileText size={16} />
+                        </div>
+                        <span className="font-semibold text-gray-800 break-words text-left max-w-[160px]">{record.docName}</span>
                       </div>
-                      <span className="font-semibold text-gray-800 break-words">{record.docName}</span>
-                    </div>
-                  </td>
-                  <td className="py-5 px-4 align-top">
-                    <div className="flex items-start gap-2 bg-amber-50/50 border border-amber-100/50 p-2.5 rounded-lg group/summary cursor-default transition-colors hover:bg-amber-50">
-                      <Sparkles size={14} className="text-amber-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 group-hover/summary:line-clamp-none transition-all">
-                        {record.summary}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="py-5 px-4 text-gray-600 align-top pt-6">{record.folderName}</td>
-                  <td className="py-5 px-4 text-gray-600 align-top pt-6">{record.applicant}</td>
-                  <td className="py-5 px-4 text-gray-600 align-top pt-6">{record.approver}</td>
-                  <td className="py-5 px-4 text-gray-400 text-xs align-top pt-6">{record.requestTime}</td>
-                  <td className="py-5 px-4 align-top pt-6">
-                    <StatusBadge status={record.status} />
-                  </td>
-                  <td className="py-5 px-6 align-top pt-6">
-                    <div className="flex items-center justify-end gap-3 font-medium text-[13px]">
+                    </td>
+                    <td className="py-4 px-4 align-middle">
+                      <div 
+                        className="flex items-start gap-2 bg-amber-50/50 border border-amber-100/50 p-2.5 rounded-lg group/summary cursor-pointer transition-colors hover:bg-amber-50 hover:border-amber-200 text-left mx-auto max-w-[280px]"
+                        onClick={() => setSelectedRecord(record)}
+                        title="点击查看概述详情并审批"
+                      >
+                        <Sparkles size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 transition-all">
+                          {record.summary}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 align-middle text-center">{record.folderName}</td>
+                    <td className="py-4 px-4 text-gray-600 align-middle text-center">{record.applicant}</td>
+                    <td className="py-4 px-4 text-gray-600 align-middle text-center">{record.approver}</td>
+                    <td className="py-4 px-4 text-gray-400 text-xs align-middle text-center">{record.requestTime}</td>
+                    <td className="py-4 px-4 align-middle text-center">
+                      <StatusBadge status={record.status} />
+                    </td>
+                    <td className="py-4 px-6 align-middle">
+                      <div className="flex items-center justify-center gap-3 font-medium text-[13px]">
                       {record.status === 'pending' && (
                         <>
                           <button 
@@ -182,6 +193,80 @@ export function ApprovalContent() {
           </table>
         </div>
       </div>
+
+      {/* Summary Modal */}
+      {selectedRecord && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-[600px] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                脱敏后文件内容概述
+              </h3>
+              <button onClick={() => setSelectedRecord(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <span className="text-sm font-medium text-gray-500 mb-1 block">申请文档</span>
+                <div className="flex items-center gap-2 font-medium text-gray-800">
+                  <FileText size={16} className="text-[#FF6B35]" />
+                  {selectedRecord.docName}
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <span className="text-sm font-medium text-gray-500 mb-2 block">AI 脱敏摘要</span>
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-gray-700 leading-relaxed shadow-sm">
+                  {selectedRecord.summary}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl text-sm">
+                <div>
+                  <span className="text-gray-400">申请人：</span>
+                  <span className="text-gray-700 ml-1">{selectedRecord.applicant}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">申请时间：</span>
+                  <span className="text-gray-700 ml-1">{selectedRecord.requestTime}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">当前状态：</span>
+                  <span className="ml-1"><StatusBadge status={selectedRecord.status} /></span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-3">
+              {selectedRecord.status === 'pending' ? (
+                <>
+                  <button 
+                    onClick={() => handleReject(selectedRecord.id)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100 flex items-center gap-1.5"
+                  >
+                    <XCircle size={16} /> 驳回申请
+                  </button>
+                  <button 
+                    onClick={() => handleApprove(selectedRecord.id)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    <CheckCircle size={16} /> 审核通过
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setSelectedRecord(null)}
+                  className="px-6 py-2 rounded-lg text-sm font-medium bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  关闭
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
